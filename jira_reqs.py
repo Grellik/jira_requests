@@ -52,7 +52,7 @@ def create_csv():
         row = [key, component, reporter, creation_date, update_date]
         rows.append(row) 
     
-    with open(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv","w", encoding='UTF8', newline='') as f:
+    with open("data_csv.csv","w", encoding='UTF8', newline='') as f:
         write = csv.writer(f)
         write.writerow(header)
         write.writerows(rows)
