@@ -1,12 +1,14 @@
 import requests
-import csv
+import pandas as pd
 
+
+# Метод для api запрос с jira и сохранения полученного файла в csv формате
 def create_csv():
     # Тестовый автоматический запрос для последнего бага :
     #URL_REQ = "https://jira.atlassian.com/rest/api/2/search?maxResults=1&startAt=0&jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
     
     
-    #Запрос с вводом пользавателя
+    # Запрос с вводом пользавателя
     url = "https://jira.atlassian.com/rest/api/2/search?"
     maxResults = int(input("Max results = "))
     startAt = int(input("Start at = "))
@@ -19,9 +21,11 @@ def create_csv():
     # Status code :
     #print(r)
     
+
+
+    # Создание датафрейма из нужных параметров
     data_json = r.json()
-    header = ["key", "component", "reporter", "creation_date", "update_date"]
-    rows = []
+
     l_key = []
     l_com = []
     l_rep = []
@@ -47,15 +51,7 @@ def create_csv():
     
         update_date = issue["fields"]["updated"]
         #print(update_date)
-        l_up.append(update_date)
-    
-        row = [key, component, reporter, creation_date, update_date]
-        rows.append(row) 
-    
-    with open("data_csv.csv","w", encoding='UTF8', newline='') as f:
-        write = csv.writer(f)
-        write.writerow(header)
-        write.writerows(rows)
+        l_up.append(update_date)    
 
     data_graph = {
         "key" : l_key,
@@ -65,4 +61,6 @@ def create_csv():
         "update date" : l_up
     }
 
-    return data_graph
+    # Не забудьте поменять расположение файла для сохранение здесь, и загрузки в graph.py (строки 176 и 187)!
+    df = pd.DataFrame(data_graph,columns=["key", "component", "reporter", "creation date", "update date"])
+    df.to_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",index=False)
