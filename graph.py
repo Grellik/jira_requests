@@ -187,7 +187,7 @@ def graph_analytics(df):
 
   
 choice = None
-# Не забудьте поменять путь к сейву здесь (строка 191 и 204) и на строке 65 в jira_reqs)
+# Не забудьте поменять путь к сейву здесь (строка 191 и 204) и на строке 66 в jira_reqs)
 df = pd.read_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",engine="python")
 
 
