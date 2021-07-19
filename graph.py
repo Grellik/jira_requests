@@ -1,141 +1,66 @@
-from jira_reqs import *
+import requests
 import pandas as pd
-import matplotlib.pyplot as plt
 
-data = create_csv()
 
-df = pd.DataFrame(data,columns=["key", "component", "reporter", "creation date", "update date"])
-print(df)
-
-def graph_time(df):
-
-    month = int(input("month (as number) = "))
-    year = int(input("year (as 4 digit number) ="))
+# Метод для api запрос с jira и сохранения полученного файла в csv формате
+def create_csv():
+    # Тестовый автоматический запрос для последнего бага :
+    #URL_REQ = "https://jira.atlassian.com/rest/api/2/search?maxResults=1&startAt=0&jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
     
-    bug_num = []
-    day_num = []
-    bugs = 0
     
-    for index, row in df.iterrows():
-        cd = row["creation date"].split("T")
-        cd = cd[0].split("-")
-        if year > int(cd[0]) or month > int(cd[1]):
-            break
-        if year == int(cd[0]) and month == int(cd[1]):
-            bugs += 1
-        bug_num.append(bugs)
-        day_num.append(str(cd[2]))
+    # Запрос с вводом пользавателя
+    url = "https://jira.atlassian.com/rest/api/2/search?"
+    maxResults = int(input("Max results = "))
+    startAt = int(input("Start at = "))
+    jql = "jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
     
-    day_num.reverse()
-    bug_num.reverse()
+    URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql
     
-    graph_data = {
-        "bugs" : bug_num,
-        "day" : day_num
-    }
+    r = requests.get(URL_REQ)
     
-    gdf = pd.DataFrame(graph_data, columns=["bugs", "day"])
-    gdf = gdf.groupby("day").agg({"bugs":'sum'}).reset_index()
+    # Status code :
+    #print(r)
     
-    print(gdf)
-    gdf.plot(x ="day", y="bugs", kind = 'bar')
-    plt.show()
-    
-def graph_testers(df):
 
-    names = {}
 
-    quarter = int(input("quarter (1-4) ="))
-    year = int(input("year (as 4 digit number) ="))
-    if quarter == 1:
-        month = [1,2,3]
-    elif quarter == 2:
-        month = [4,5,6]
-    elif quarter == 3:
-        month = [7,8,9]
-    else:
-        month = [10,11,12]
+    # Создание датафрейма из нужных параметров
+    data_json = r.json()
 
-    for index, row in df.iterrows():
-        cd = row["creation date"].split("T")
-        cd = cd[0].split("-")
-        if year > int(cd[0]) and int(cd[1] not in month):
-            break
-        if year == int(cd[0]) and int(cd[1]) in month:
-            if row["reporter"] not in names:
-                names[row["reporter"]] = 1
-            else:
-                names[row["reporter"]] += 1
+    l_key = []
+    l_com = []
+    l_rep = []
+    l_cd = []
+    l_up = []    
+    
+    for issue in data_json["issues"]:
+        key = issue["key"]    
+        #print(key)
+        l_key.append(key)
+    
+        component = issue["fields"]["components"][0]["name"]
+        #print(component)
+        l_com.append(component)
+    
+        reporter = issue["fields"]["reporter"]["displayName"]
+        #print(reporter)
+        l_rep.append(reporter)
+    
+        creation_date = issue["fields"]["created"]
+        #print(creation_date)
+        l_cd.append(creation_date)
+    
+        update_date = issue["fields"]["updated"]
+        #print(update_date)
+        l_up.append(update_date)    
 
-    name = []
-    bugs = []
-    for k, v in names.items():
-        name.append(k)
-        bugs.append(v)
-
-    graph_data = {
-        "name" : name,
-        "bugs" : bugs
+    data_graph = {
+        "key" : l_key,
+        "component" : l_com,
+        "reporter" : l_rep,
+        "creation date" : l_cd,
+        "update date" : l_up
     }
 
-    gdf = pd.DataFrame(graph_data, columns=["bugs", "name"])
-    
-    print(gdf)
-    gdf.plot(x ="name", y="bugs", kind = 'bar')
-    plt.show()          
-
-def graph_analytics(df):
-
-    components = {}
-
-    quarter = int(input("quarter (1-4) ="))
-    year = int(input("year (as 4 digit number) ="))
-    if quarter == 1:
-        month = [1,2,3]
-    elif quarter == 2:
-        month = [4,5,6]
-    elif quarter == 3:
-        month = [7,8,9]
-    else:
-        month = [10,11,12]
-    
-    for index, row in df.iterrows():
-        cd = row["creation date"].split("T")
-        cd = cd[0].split("-")
-        if year > int(cd[0]) and int(cd[1] not in month):
-            break
-        if year == int(cd[0]) and int(cd[1]) in month:
-            if row["component"] not in components:
-                components[row["component"]] = 1
-            else:
-                components[row["component"]] += 1
-
-    component = []
-    bugs = []
-    for k, v in components.items():
-        component.append(k)
-        bugs.append(v)
-    
-    graph_data = {
-        "components" : component,
-        "bugs" : bugs
-    }
-
-    print(graph_data)
-
-    gdf = pd.DataFrame(graph_data, columns=["bugs", "components"])
-    
-    print(gdf)
-    gdf.plot(x ="components", y="bugs", kind = 'bar')
-    plt.show()
-
-
-
-choice = int(input("1 - bugs per monyh; 2 - testers; 3 - analytics. = "))
-
-if choice == 1:
-    graph_time(df)
-elif choice ==2:
-    graph_testers(df)
-else:
-    graph_analytics(df)
+    # Не забудьте поменять расположение файла для сохранение здесь, и загрузки в graph.py (строки 176 и 187)!
+    df = pd.DataFrame(data_graph,columns=["key", "component", "reporter", "creation date", "update date"])
+    df.to_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",index=False)
