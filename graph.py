@@ -1,66 +1,212 @@
-import requests
+from jira_reqs import *
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
-# Метод для api запрос с jira и сохранения полученного файла в csv формате
-def create_csv():
-    # Тестовый автоматический запрос для последнего бага :
-    #URL_REQ = "https://jira.atlassian.com/rest/api/2/search?maxResults=1&startAt=0&jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
-    
-    
-    # Запрос с вводом пользавателя
-    url = "https://jira.atlassian.com/rest/api/2/search?"
-    maxResults = int(input("Max results = "))
-    startAt = int(input("Start at = "))
-    jql = "jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
-    
-    URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql
-    
-    r = requests.get(URL_REQ)
-    
-    # Status code :
-    #print(r)
-    
+def graph_time(df):
+
+    choice = int(input("1 - bugs in month, 2 - bugs in quarter. \n" \
+        "? = "))
+
+    # Отображение кол-ва багов каждый день в течении указанного месяца
+    if choice == 1:
+
+        month = int(input("month (as number) = "))
+        year = int(input("year (as 4 digit number) ="))
+        
+        bug_num = []
+        day_num = []
+        bugs = 0
+        
+        # Поиск нужной даты начиная с самой поздней
+        for index, row in df.iterrows():
+            bugs = 0
+            cd = row["creation date"].split("T")
+            cd = cd[0].split("-")
+
+            # Конец цикла как только он вышел за предел искомой даты, дабы не терять время при работе-
+            #- с файлом большого обьема
+            if year > int(cd[0]) or month > int(cd[1]):
+                break
+
+            # Сохранение каждого полученого бага и даты его получения в списки
+            if year == int(cd[0]) and month == int(cd[1]):
+                bugs += 1
+            bug_num.append(bugs)
+            day_num.append(str(cd[2]))
+        
+        # Реверс списков для отображения "прошлое" -> "будущее" по оси х
+        day_num.reverse()
+        bug_num.reverse()
+        
+        graph_data = {
+            "bugs" : bug_num,
+            "day" : day_num
+        }
+        
+        # Создание датафрейма для графика
+        gdf = pd.DataFrame(graph_data, columns=["bugs", "day"])
+        # Если на один день приходится несколько багов, одни объеденяются в одну строку
+        gdf = gdf.groupby("day").agg({"bugs":'sum'}).reset_index()
+        
+        gdf.plot(x ="day", y="bugs", kind = 'bar')
+        plt.show()
+
+    # Отображение кол-ва багов каждый день в течении указанного квартала
+    else:
+
+        quarter = int(input("quarter (1-4) = "))
+        year = int(input("year (as 4 digit number) = "))
+        if quarter == 1:
+            month = [1,2,3]
+        elif quarter == 2:
+            month = [4,5,6]
+        elif quarter == 3:
+            month = [7,8,9]
+        else:
+            month = [10,11,12]
+        
+        bug_num = []
+        day_num = []
+        bugs = 0
+        
+        for index, row in df.iterrows():
+            bugs = 0
+            cd = row["creation date"].split("T")
+            cd = cd[0].split("-")
+            if year > int(cd[0]) and int(cd[1] not in month):
+                break
+            if year == int(cd[0]) and int(cd[1]) in month:
+                bugs += 1
+            bug_num.append(bugs)
+            day_num.append(str(cd[1] + "-" + cd[2]))
+        
+        day_num.reverse()
+        bug_num.reverse()
+        
+        graph_data = {
+            "bugs" : bug_num,
+            "day" : day_num
+        }
+        
+        gdf = pd.DataFrame(graph_data, columns=["bugs", "day"])
+        gdf = gdf.groupby("day").agg({"bugs":'sum'}).reset_index()
+        
+        gdf.plot(x ="day", y="bugs", kind = 'bar')
+        plt.show()
 
 
-    # Создание датафрейма из нужных параметров
-    data_json = r.json()
 
-    l_key = []
-    l_com = []
-    l_rep = []
-    l_cd = []
-    l_up = []    
+# Последующие функции для создания графиков имеют схожую структуру
     
-    for issue in data_json["issues"]:
-        key = issue["key"]    
-        #print(key)
-        l_key.append(key)
-    
-        component = issue["fields"]["components"][0]["name"]
-        #print(component)
-        l_com.append(component)
-    
-        reporter = issue["fields"]["reporter"]["displayName"]
-        #print(reporter)
-        l_rep.append(reporter)
-    
-        creation_date = issue["fields"]["created"]
-        #print(creation_date)
-        l_cd.append(creation_date)
-    
-        update_date = issue["fields"]["updated"]
-        #print(update_date)
-        l_up.append(update_date)    
+def graph_testers(df):
 
-    data_graph = {
-        "key" : l_key,
-        "component" : l_com,
-        "reporter" : l_rep,
-        "creation date" : l_cd,
-        "update date" : l_up
+    names = {}
+
+    quarter = int(input("quarter (1-4) = "))
+    year = int(input("year (as 4 digit number) = "))
+    if quarter == 1:
+        month = [1,2,3]
+    elif quarter == 2:
+        month = [4,5,6]
+    elif quarter == 3:
+        month = [7,8,9]
+    else:
+        month = [10,11,12]
+
+    for index, row in df.iterrows():
+        cd = row["creation date"].split("T")
+        cd = cd[0].split("-")
+        if year > int(cd[0]) and int(cd[1] not in month):
+            break
+        if year == int(cd[0]) and int(cd[1]) in month:
+            if row["reporter"] not in names:
+                names[row["reporter"]] = 1
+            else:
+                names[row["reporter"]] += 1
+
+    name = []
+    bugs = []
+    for k, v in names.items():
+        name.append(k)
+        bugs.append(v)
+
+    graph_data = {
+        "name" : name,
+        "bugs" : bugs
     }
 
-    # Не забудьте поменять расположение файла для сохранение здесь, и загрузки в graph.py (строки 176 и 187)!
-    df = pd.DataFrame(data_graph,columns=["key", "component", "reporter", "creation date", "update date"])
-    df.to_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",index=False)
+    gdf = pd.DataFrame(graph_data, columns=["bugs", "name"])
+    
+    gdf.plot(x ="name", y="bugs", kind = 'bar')
+    plt.show()          
+
+def graph_analytics(df):
+
+    components = {}
+
+    quarter = int(input("quarter (1-4) = "))
+    year = int(input("year (as 4 digit number) = "))
+    if quarter == 1:
+        month = [1,2,3]
+    elif quarter == 2:
+        month = [4,5,6]
+    elif quarter == 3:
+        month = [7,8,9]
+    else:
+        month = [10,11,12]
+    
+    for index, row in df.iterrows():
+        cd = row["creation date"].split("T")
+        cd = cd[0].split("-")
+        if year > int(cd[0]) and int(cd[1] not in month):
+            break
+        if year == int(cd[0]) and int(cd[1]) in month:
+            if row["component"] not in components:
+                components[row["component"]] = 1
+            else:
+                components[row["component"]] += 1
+
+    component = []
+    bugs = []
+    for k, v in components.items():
+        component.append(k)
+        bugs.append(v)
+    
+    graph_data = {
+        "components" : component,
+        "bugs" : bugs
+    }
+
+    print(graph_data)
+
+    gdf = pd.DataFrame(graph_data, columns=["bugs", "components"])
+    
+    gdf.plot(x ="components", y="bugs", kind = 'bar')
+    plt.show()
+
+  
+choice = None
+
+df = pd.read_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",engine="python")
+
+
+# Меню выбора действий
+while choice !=0:
+    if choice == 1:
+        graph_time(df)
+    elif choice == 2:
+        graph_testers(df)
+    elif choice == 3:
+        graph_analytics(df)
+    elif choice == 4:
+        create_csv()
+        df = pd.read_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",engine="python")
+        print("new data ", df)
+
+    choice = int(input("1 - graph showing amount of bugs in month/quarter \n" \
+    "2 - graph showing amount of bugs found by reporters in quarter \n" \
+    "3 - graph showing most problematic component in chosen quarter \n" \
+    "4 - update and load data \n" \
+    "0 - exit \n" \
+    "? = "))
