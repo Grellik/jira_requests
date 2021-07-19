@@ -61,6 +61,6 @@ def create_csv():
         "update date" : l_up
     }
 
-    # Не забудьте поменять расположение файла для сохранение здесь, и загрузки в graph.py (строки 176 и 187)!
+    # Не забудьте поменять расположение файла для сохранение здесь и в graph.py (строки 191 и 204)!
     df = pd.DataFrame(data_graph,columns=["key", "component", "reporter", "creation date", "update date"])
     df.to_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",index=False)
