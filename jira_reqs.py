@@ -4,55 +4,143 @@ import pandas as pd
 
 # Метод для api запрос с jira и сохранения полученного файла в csv формате
 def create_csv():
-    # Тестовый автоматический запрос для последнего бага :
+    # Тестовый api запрос для последнего бага :
     #URL_REQ = "https://jira.atlassian.com/rest/api/2/search?maxResults=1&startAt=0&jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
     
-    
-    # Запрос с вводом пользавателя
-    url = "https://jira.atlassian.com/rest/api/2/search?"
-    maxResults = int(input("Max results = "))
-    startAt = int(input("Start at = "))
-    jql = "jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
-    
-    URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql
-    
-    r = requests.get(URL_REQ)
-    
-    # Status code :
-    #print(r)
+    choice = int(input("1 - search by date \n" \
+        "2 - search with maxResult/startAt input by user \n" \
+        "? = "))
     
 
+    if choice == 1:
 
-    # Создание датафрейма из нужных параметров
-    data_json = r.json()
+        choice_date = int(input("1 - search by months/year \n" \
+            "2 - search by quarter/year \n" \
+            "3 - search by year \n" \
+            "? = "))
 
-    l_key = []
-    l_com = []
-    l_rep = []
-    l_cd = []
-    l_up = []    
-    
-    for issue in data_json["issues"]:
-        key = issue["key"]    
-        #print(key)
-        l_key.append(key)
-    
-        component = issue["fields"]["components"][0]["name"]
-        #print(component)
-        l_com.append(component)
-    
-        reporter = issue["fields"]["reporter"]["displayName"]
-        #print(reporter)
-        l_rep.append(reporter)
-    
-        creation_date = issue["fields"]["created"]
-        #print(creation_date)
-        l_cd.append(creation_date)
-    
-        update_date = issue["fields"]["updated"]
-        #print(update_date)
-        l_up.append(update_date)    
+        months = []
 
+        if choice_date == 1:
+            mon = None
+            while mon != 0:
+                mon = int(input("add month number (0 if done, 13 to remove) = "))
+                if mon != 0 and mon != 13:
+                    months.append(mon)
+                    print("current months to search : ", months)
+                elif mon == 13:
+                    rem = int(input("what month to remove? : "))
+                    months.remove(rem)
+                    print("current monts to search : ", months)
+            year = int(input("What year to search? (yyyy format) : "))
+
+        elif choice_date == 2:
+            quarter = int(input("quarter (1-4) = "))
+            year = int(input("year (yyyy format) = "))
+
+            if quarter == 1:
+                months = [1,2,3]
+            elif quarter == 2:
+                months = [4,5,6]
+            elif quarter == 3:
+                months = [7,8,9]
+            else:
+                months = [10,11,12]
+        
+        elif choice_date == 3:
+            year = int(input("year (yyyy format) = "))
+
+        done = False
+
+        url = "https://jira.atlassian.com/rest/api/2/search?"
+        maxResults = 100
+        startAt = 0
+        jql = "jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
+
+        l_key = []
+        l_com = []
+        l_rep = []
+        l_cd = []
+        l_up = []    
+                    
+        while done==False :
+            URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql
+            r = requests.get(URL_REQ)
+            data_json = r.json()
+            for issue in data_json["issues"]:
+                cd = issue["fields"]["created"]
+                cd = cd.split("T")
+                cd = cd[0].split("-")
+                if (int(cd[0]) == year and int(cd[1]) in months) or (choice_date == 3 and int(cd[0]) == year):
+                
+                    key = issue["key"]
+                    l_key.append(key)
+                
+                    component = issue["fields"]["components"][0]["name"]
+                    l_com.append(component)
+                
+                    reporter = issue["fields"]["reporter"]["displayName"]
+                    l_rep.append(reporter)
+                
+                    creation_date = issue["fields"]["created"]
+                    l_cd.append(creation_date)
+                
+                    update_date = issue["fields"]["updated"]
+                    l_up.append(update_date)
+
+                elif int(cd[0]) < year:
+                    done = True
+                    break
+            startAt = maxResults - 1
+            maxResults += 100
+
+    elif choice == 2:
+    
+        url = "https://jira.atlassian.com/rest/api/2/search?"
+        maxResults = int(input("Max results = "))
+        startAt = int(input("Start at = "))
+        jql = "jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
+        
+        URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql                
+
+
+        r = requests.get(URL_REQ)
+        
+        # Status code :
+        #print(r)
+        
+    
+    
+        # Создание датафрейма из нужных параметров
+        data_json = r.json()
+    
+        l_key = []
+        l_com = []
+        l_rep = []
+        l_cd = []
+        l_up = []    
+        
+        for issue in data_json["issues"]:
+            key = issue["key"]    
+            #print(key)
+            l_key.append(key)
+        
+            component = issue["fields"]["components"][0]["name"]
+            #print(component)
+            l_com.append(component)
+        
+            reporter = issue["fields"]["reporter"]["displayName"]
+            #print(reporter)
+            l_rep.append(reporter)
+        
+            creation_date = issue["fields"]["created"]
+            #print(creation_date)
+            l_cd.append(creation_date)
+        
+            update_date = issue["fields"]["updated"]
+            #print(update_date)
+            l_up.append(update_date)    
+    
     data_graph = {
         "key" : l_key,
         "component" : l_com,
@@ -61,6 +149,7 @@ def create_csv():
         "update date" : l_up
     }
 
-    # Не забудьте поменять расположение файла для сохранение здесь и в graph.py (строки 191 и 204)!
+    # Не забудьте поменять расположение файла для сохранение здесь, и в graph.py (строки 192 и 205)!
     df = pd.DataFrame(data_graph,columns=["key", "component", "reporter", "creation date", "update date"])
     df.to_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",index=False)
+
