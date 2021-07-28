@@ -50,20 +50,24 @@ def create_csv():
         elif choice_date == 3:
             year = int(input("year (yyyy format) = "))
 
-        done = False
-
         url = "https://jira.atlassian.com/rest/api/2/search?"
-        maxResults = 100
-        startAt = 0
+        maxResults = 1
+        startAt = 99
         jql = "jql=project = JRASERVER AND resolution = Unresolved and type = Bug ORDER BY createdDate DESC"
+        
+        done = False
 
         l_key = []
         l_com = []
         l_rep = []
         l_cd = []
-        l_up = []    
-                    
-        while done==False :
+        l_up = []   
+        
+        months.sort()
+        
+        integer = 100
+        
+        while done == False and integer != 1:
             URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql
             r = requests.get(URL_REQ)
             data_json = r.json()
@@ -71,29 +75,58 @@ def create_csv():
                 cd = issue["fields"]["created"]
                 cd = cd.split("T")
                 cd = cd[0].split("-")
-                if (int(cd[0]) == year and int(cd[1]) in months) or (choice_date == 3 and int(cd[0]) == year):
-                
-                    key = issue["key"]
-                    l_key.append(key)
-                
-                    component = issue["fields"]["components"][0]["name"]
-                    l_com.append(component)
-                
-                    reporter = issue["fields"]["reporter"]["displayName"]
-                    l_rep.append(reporter)
-                
-                    creation_date = issue["fields"]["created"]
-                    l_cd.append(creation_date)
-                
-                    update_date = issue["fields"]["updated"]
-                    l_up.append(update_date)
-
-                elif int(cd[0]) < year:
-                    done = True
-                    break
-            startAt = maxResults - 1
-            maxResults += 100
-
+            if int(cd[0]) > year:
+                startAt += int(integer)
+            elif choice_date != 3:
+                if int(cd[1]) > months[-1] and int(cd[0]) == year:
+                    startAt += int(integer)
+                else:
+                    if integer % 2 == 0:
+                        integer /= 2
+                    else:
+                        integer += 1
+                        integer /= 2
+                    startAt -= int(integer)
+            else:
+                if integer % 2 == 0:
+                    integer /= 2
+                else:
+                    integer += 1
+                    integer /= 2
+                startAt -= int(integer)
+            if integer == 1:
+                maxResults = 10
+                startAt -= 1
+                while int(cd[0]) >= year:
+                    URL_REQ = url + "maxResults="+str(maxResults) + "&" + "startAt="+str(startAt) + "&" + jql
+                    r = requests.get(URL_REQ)
+                    data_json = r.json()
+                    for issue in data_json["issues"]:
+                        cd = issue["fields"]["created"]
+                        cd = cd.split("T")
+                        cd = cd[0].split("-")
+                        if (int(cd[0]) == year and int(cd[1]) in months):
+                        
+                            key = issue["key"]
+                            l_key.append(key)
+                        
+                            component = issue["fields"]["components"][0]["name"]
+                            l_com.append(component)
+                        
+                            reporter = issue["fields"]["reporter"]["displayName"]
+                            l_rep.append(reporter)
+                        
+                            creation_date = issue["fields"]["created"]
+                            l_cd.append(creation_date)
+                        
+                            update_date = issue["fields"]["updated"]
+                            l_up.append(update_date)
+                    if choice_date != 3:
+                        if int(cd[1]) < months[0]:
+                            break
+                    startAt += 10
+                done = True
+        
     elif choice == 2:
     
         url = "https://jira.atlassian.com/rest/api/2/search?"
@@ -149,7 +182,6 @@ def create_csv():
         "update date" : l_up
     }
 
-    # Не забудьте поменять расположение файла для сохранение здесь, и в graph.py (строки 192 и 205)!
+    # Не забудьте поменять расположение файла для сохранение здесь, и в graph.py (строки 176 и 189)!
     df = pd.DataFrame(data_graph,columns=["key", "component", "reporter", "creation date", "update date"])
     df.to_csv(r"C:\Users\danil\Documents\Work\jira_reqs\data_csv.csv",index=False)
-
